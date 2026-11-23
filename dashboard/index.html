@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Minou a soif · Tableau de bord</title>
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<!-- Connexion -->
+<main id="login" class="login" hidden>
+  <form class="login-card" id="loginForm" novalidate>
+    <div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Minou a soif</b><small>Tableau de bord</small></div></div>
+    <label>E-mail<input type="email" name="email" autocomplete="username" required></label>
+    <label>Mot de passe<input type="password" name="password" autocomplete="current-password" required></label>
+    <p class="err" id="loginErr" role="alert" hidden></p>
+    <button class="primary" type="submit">Se connecter</button>
+    <p class="hint">Accès réservé. Les chiffres ne sont visibles qu’avec un compte autorisé.</p>
+  </form>
+</main>
+
+<!-- Tableau de bord -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Minou a soif</b><small id="stamp">Tableau de bord</small></div></div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" data-tab="overview" aria-selected="true">Vue d’ensemble</button>
+      <button role="tab" data-tab="levels" aria-selected="false">Niveaux</button>
+      <button role="tab" data-tab="players" aria-selected="false">Joueurs</button>
+    </nav>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Période" id="period">
+        <button data-d="7">7 j</button><button data-d="14">14 j</button><button data-d="30" class="on">30 j</button><button data-d="90">90 j</button>
+      </div>
+      <button class="ghost" id="refresh" title="Actualiser" aria-label="Actualiser"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button>
+      <button class="ghost" id="logout">Déconnexion</button>
+    </div>
+  </header>
+  <div class="demo-note" id="demoNote" hidden>Données de démonstration : des joueurs simulés, pour voir le tableau de bord avant l’arrivée des vrais.</div>
+  <p class="err page-err" id="pageErr" role="alert" hidden></p>
+
+  <section id="tab-overview" class="tab">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid two">
+      <article class="card"><header><h2>Joueurs par jour</h2><p>Joueurs actifs et nouveaux joueurs, chaque jour</p></header><div class="legend" id="lgPlayers"></div><div class="chart" id="chPlayers"></div></article>
+      <article class="card"><header><h2>Parties par jour</h2><p>Niveaux lancés, gagnés et perdus</p></header><div class="legend" id="lgGames"></div><div class="chart" id="chGames"></div></article>
+    </div>
+    <div class="grid two">
+      <article class="card"><header><h2>Entonnoir de progression</h2><p>Parmi les joueurs arrivés sur la période, combien atteignent chaque étape</p></header><div id="funnel" class="funnel"></div></article>
+      <article class="card"><header><h2>Rétention</h2><p>Part des joueurs qui rejouent N jours après leur arrivée</p></header><div class="chart short" id="chRet"></div><div class="tablewrap small"><table id="cohorts"></table></div></article>
+    </div>
+    <div class="grid three">
+      <article class="card"><header><h2>Bonus utilisés</h2><p>Avant le niveau ou pendant la partie</p></header><div class="legend" id="lgBoost"></div><div id="boosters" class="bars"></div></article>
+      <article class="card"><header><h2>Croquettes dépensées</h2><p id="spendSub">Par type d’achat</p></header><div id="spend" class="bars"></div></article>
+      <article class="card"><header><h2>Publicités vues</h2><p>Par emplacement</p></header><div id="ads" class="bars"></div></article>
+    </div>
+    <div class="grid three">
+      <article class="card"><header><h2>Abandons de niveau</h2><p>Comment les parties non gagnées se terminent</p></header><div id="quits" class="bars"></div></article>
+      <article class="card"><header><h2>Comptes</h2><p>Créations de compte par méthode</p></header><div id="accounts" class="bars"></div></article>
+      <article class="card"><header><h2>Depuis le début</h2><p>Tous les chiffres cumulés</p></header><dl id="totals" class="facts"></dl></article>
+    </div>
+  </section>
+
+  <section id="tab-levels" class="tab" hidden>
+    <div class="grid one">
+      <article class="card"><header><h2>Jusqu’où vont les joueurs</h2><p>Nombre de joueurs ayant gagné chaque niveau sur la période</p></header><div class="chart" id="chReach"></div></article>
+      <article class="card"><header><h2>Taux de réussite par niveau</h2><p>Victoires divisées par parties lancées. Sous la ligne des 50 %, le niveau mérite un coup d’œil. Barres pâles : moins de 10 parties.</p></header><div class="chart" id="chWin"></div></article>
+      <article class="card"><header class="row"><div><h2>Difficulté niveau par niveau</h2><p>Clique sur une colonne pour trier</p></div><label class="check"><input type="checkbox" id="onlyHard"> Seulement les niveaux à surveiller</label></header><div class="tablewrap"><table id="levels"></table></div></article>
+    </div>
+  </section>
+
+  <section id="tab-players" class="tab" hidden>
+    <div class="grid one">
+      <article class="card"><header><h2>Joueurs</h2><p>Les derniers joueurs actifs. Clique sur une ligne pour voir tout son parcours.</p></header><div class="tablewrap"><table id="players"></table></div></article>
+    </div>
+  </section>
+  <footer class="foot">Jours comptés à l’heure de Paris. Un « joueur » est une installation du jeu (identifiant aléatoire, aucun nom).</footer>
+</div>
+
+<aside id="drawer" class="drawer" hidden aria-label="Parcours du joueur">
+  <header><div><h2 id="drTitle">Parcours</h2><p id="drSub"></p></div><button class="ghost" id="drClose" aria-label="Fermer">Fermer</button></header>
+  <div id="drBody" class="journey"></div>
+</aside>
+<div id="tip" class="tip" hidden></div>
+
+<script src="config.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
