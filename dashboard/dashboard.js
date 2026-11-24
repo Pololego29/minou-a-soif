@@ -268,13 +268,13 @@
   function render() { if (!data) return; if (tab === 'overview') renderOverview(); else if (tab === 'levels') renderLevels(); else renderPlayers(); }
   function fail(e) {
     if (e.status === 401) { setSession(null); return showLogin('Session expirée. Reconnecte-toi.'); }
-    const box = $('#pageErr'); box.hidden = false;
-    box.textContent = e.status === 403 ? 'Ce compte n’a pas accès au tableau de bord. Il doit être ajouté à la liste des administrateurs dans Supabase.' : 'Impossible de charger les chiffres. Vérifie ta connexion puis actualise.';
+    const box = $('#pageErr'); box.hidden = false; $('#app').classList.toggle('denied', e.status === 403);
+    box.textContent = e.status === 403 ? 'Ton accès est créé, mais il n’est pas encore autorisé à voir les chiffres : il doit être ajouté à la liste des administrateurs dans Supabase. Actualise ensuite cette page.' : 'Impossible de charger les chiffres. Vérifie ta connexion puis actualise.';
   }
   async function loadData() {
     $('#refresh').classList.add('spin'); $('#pageErr').hidden = true;
     try {
-      data = await api.dashboard(days); players = null;
+      data = await api.dashboard(days); players = null; $('#app').classList.remove('denied');
       $('#stamp').textContent = `Du ${dayLabel(data.from)} au ${dayLabel(data.to)} · mis à jour à ${new Date(DEMO ? Date.now() : data.generated_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
       render();
     } catch (e) { fail(e); }
@@ -293,10 +293,34 @@
 
   function showLogin(msg) { $('#app').hidden = true; $('#drawer').hidden = true; $('#login').hidden = false; const e = $('#loginErr'); e.hidden = !msg; e.textContent = msg || ''; }
   function showApp() { $('#login').hidden = true; $('#app').hidden = false; $('#demoNote').hidden = !DEMO; if (DEMO) $('#logout').hidden = true; loadData(); }
+  // Connexion, ou création d'un accès (e-mail + mot de passe). Un accès neuf ne voit rien tant qu'il n'est pas dans la liste des administrateurs.
+  let signup = false;
+  const setMode = on => {
+    signup = on; const f = $('#loginForm');
+    $('#loginBtn').textContent = on ? 'Créer mon accès' : 'Se connecter';
+    $('#loginMode').textContent = on ? 'J’ai déjà un accès : me connecter' : 'Première fois ? Créer mon accès';
+    $('#pwHint').hidden = !on; f.password.autocomplete = on ? 'new-password' : 'current-password'; $('#loginErr').hidden = true;
+  };
+  $('#loginMode').onclick = () => setMode(!signup);
+  const authError = err => {
+    if (!signup) return err.status === 400 ? 'E-mail ou mot de passe incorrect.' : 'Connexion impossible. Réessaie dans un instant.';
+    const m = (err.message || '').toLowerCase();
+    if (m.includes('already')) return 'Cette adresse a déjà un compte, par exemple créé avec Apple dans le jeu. Utilise une autre adresse.';
+    if (m.includes('password')) return 'Le mot de passe doit faire au moins 8 caractères.';
+    if (m.includes('email') || m.includes('invalid')) return 'Cette adresse e-mail n’est pas valide.';
+    if (err.status === 429) return 'Trop d’essais. Réessaie dans quelques minutes.';
+    return 'Création impossible. Réessaie dans un instant.';
+  };
   $('#loginForm').onsubmit = async e => {
-    e.preventDefault(); const f = e.target, b = f.querySelector('button'); b.disabled = true; $('#loginErr').hidden = true;
-    try { const s = await authCall('token?grant_type=password', { email: f.email.value.trim(), password: f.password.value }); setSession({ access_token: s.access_token, refresh_token: s.refresh_token }); f.password.value = ''; showApp(); }
-    catch (err) { const el = $('#loginErr'); el.hidden = false; el.textContent = err.status === 400 ? 'E-mail ou mot de passe incorrect.' : 'Connexion impossible. Réessaie dans un instant.'; }
+    e.preventDefault(); const f = e.target, b = $('#loginBtn'); $('#loginErr').hidden = true;
+    const email = f.email.value.trim(), password = f.password.value;
+    if (signup && password.length < 8) { const el = $('#loginErr'); el.hidden = false; el.textContent = 'Le mot de passe doit faire au moins 8 caractères.'; return; }
+    b.disabled = true;
+    try {
+      const s = signup ? await authCall('signup', { email, password, data: { source: 'dashboard' } }) : await authCall('token?grant_type=password', { email, password });
+      if (!s.access_token) throw Object.assign(new Error('pas de session'), { status: 0 });
+      setSession({ access_token: s.access_token, refresh_token: s.refresh_token }); f.password.value = ''; setMode(false); showApp();
+    } catch (err) { const el = $('#loginErr'); el.hidden = false; el.textContent = authError(err); }
     b.disabled = false;
   };
   if (DEMO || session) showApp(); else showLogin();
